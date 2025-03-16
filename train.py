@@ -16,4 +16,7 @@ nn = MultilayerPerceptron([
     Layer(X.shape[1], 20, "sigmoid"),
     Layer(20, 10, "sigmoid"),
     Layer(10, 1, "softmax")
-], )
+])
+
+nn.train(X, y)
+
