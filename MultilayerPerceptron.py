@@ -42,6 +42,10 @@ class MultilayerPerceptron:
         '''Mean Squared Error cost function.'''
         return np.mean((y_true - y_pred) ** 2)
     
+    def cost_derivative(self, y_true, y_pred):
+        '''Derivative of the cost function.'''
+        return y_pred - y_true
+    
     def forward_propagation(self, X):
         for i, layer in enumerate(self.layers):
             if i == 0:
@@ -52,16 +56,16 @@ class MultilayerPerceptron:
     
     def back_propagation(self, X, y):
         '''Backpropagation algorithm to update weights and biases.'''
-        deltas = []
+        deltas = list()
         for l in reversed(range(len(self.layers))):
             layer = self.layers[l]
-            if l == (len(self.layers) - 1):
-                deltas.insert(0, (y - layer.output) * self.layers[l].derivative_activation_function(layer.output))
+            if (l == len(self.layers) - 1):
+                deltas.insert(0, self.cost_derivative(y[0], layer.output) * layer.derivative_activation_function(layer.output))
             else:
-                deltas.insert(0, deltas[0] @ self.layers[l + 1].weights.T * layer.derivative_activation_function(layer.output))
+                deltas.insert(0, (deltas[0] @ self.layers[l + 1].weights.T) * layer.derivative_activation_function(layer.output))
 
             layer.biases -= self.learning_rate * np.mean(deltas[0])
-            layer.weights -= self.learning_rate * self.layers[l - 1].output.T @ deltas[0] if l > 0 else X.T @ deltas[0]
+            layer.weights -= self.learning_rate * np.mean(deltas[0])
 
     def train(self, X, y):
         for epoch in range(self.epochs):
