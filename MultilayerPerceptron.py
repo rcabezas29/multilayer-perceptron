@@ -24,7 +24,7 @@ class Layer:
         self.output = np.zeros((1, n_neurons))
 
 class MultilayerPerceptron:
-    def __init__(self, layers: list, epochs: int = 5000, learning_rate: float = 0.001, early_stopping: bool = False):
+    def __init__(self, layers: list, epochs: int = 50000, learning_rate: float = 0.05, early_stopping: bool = False, verbose: bool = False):
         """
         Multilayer Perceptron constructor.
         :param layers: List of Layer objects.
@@ -37,16 +37,36 @@ class MultilayerPerceptron:
         self.layers = layers
         self.epochs = epochs
         self.learning_rate = learning_rate
+        self.early_stopping = early_stopping
+        self.verbose = verbose
 
-    def cost(self, y_true, y_pred):
-        '''Mean Squared Error cost function.'''
-        return np.mean((y_true - y_pred) ** 2)
+    def binary_cross_entropy(self, y_true, y_pred):
+        """
+        Binary cross-entropy loss function.
+        :param y_true: True labels.
+        :param y_pred: Predicted labels.
+        :return: Binary cross-entropy loss.
+        """
+        return -np.mean(y_true * np.log(y_pred + 1e-15) + (1 - y_true) * np.log(1 - y_pred + 1e-15))
+
+    def binary_cross_entropy_derivative(self, y_true, y_pred):
+        """
+        Derivative of binary cross-entropy loss function.
+        :param y_true: True labels.
+        :param y_pred: Predicted labels.
+        :return: Derivative of binary cross-entropy loss.
+        """
+        return (y_pred - y_true) / (y_pred * (1 - y_pred) + 1e-15)
+
+    # def cost(self, y_true, y_pred):
+    #     '''Mean Squared Error cost function.'''
+    #     return np.mean((y_true - y_pred) ** 2)
     
-    def cost_derivative(self, y_true, y_pred):
-        '''Derivative of the cost function.'''
-        return y_pred - y_true
+    # def cost_derivative(self, y_true, y_pred):
+    #     '''Derivative of the cost function.'''
+    #     return y_pred - y_true
     
-    def forward_propagation(self, X):
+    def feedforward(self, X):
         for i, layer in enumerate(self.layers):
             if i == 0:
                 layer.output = layer.activation_function(X @ layer.weights + layer.biases)
@@ -54,22 +74,47 @@ class MultilayerPerceptron:
                 layer.output = layer.activation_function(self.layers[i - 1].output @ layer.weights + layer.biases)
         return self.layers[-1].output
     
-    def back_propagation(self, X, y):
+    def backpropagation(self, X, y):
         '''Backpropagation algorithm to update weights and biases.'''
         deltas = list()
         for l in reversed(range(len(self.layers))):
             layer = self.layers[l]
             if (l == len(self.layers) - 1):
-                deltas.insert(0, self.cost_derivative(y[0], layer.output) * layer.derivative_activation_function(layer.output))
+                deltas.insert(0, self.binary_cross_entropy_derivative(y, layer.output) * layer.derivative_activation_function(layer.output))
             else:
                 deltas.insert(0, (deltas[0] @ self.layers[l + 1].weights.T) * layer.derivative_activation_function(layer.output))
 
+            layer.weights -= self.learning_rate * (X if l == 0 else self.layers[l - 1].output).T @ deltas[0]
             layer.biases -= self.learning_rate * np.mean(deltas[0])
-            layer.weights -= self.learning_rate * np.mean(deltas[0])
 
     def train(self, X, y):
+        loss = []
         for epoch in range(self.epochs):
-            y_pred = self.forward_propagation(X)
-            self.back_propagation(X, y)
-            if epoch % 100 == 0:
-                print(f"Epoch: {epoch}, Loss: {self.cost(y, y_pred)}")
+            y_pred = self.feedforward(X)
+            self.backpropagation(X, y)
+            if epoch % 100 == 0 and self.verbose:
+                loss.append(self.binary_cross_entropy(y, y_pred))
+                print(f"Epoch: {epoch}, Loss: {loss[-1]}")
+        print(f"Final Loss: {loss}")
+
+    def predict(self, X):
+        """
+        Predict the output for the given input data.
+        :param X: The input data.
+        :return: The predicted output.
+        """
+        for layer in self.layers:
+            X = layer.activation_function(X @ layer.weights + layer.biases)
+        return X
+
+    def evaluate(self, X, y):
+        """
+        Evaluate the model on the given data.
+        :param X: The input data.
+        :param y: The true labels.
+        :return: The accuracy of the model.
+        """
+        y_pred = self.predict(X)
+        y_pred = np.argmax(y_pred, axis=1)
+        accuracy = np.mean(y_pred == y)
+        return accuracy

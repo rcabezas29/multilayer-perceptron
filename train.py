@@ -10,15 +10,31 @@ def standardize(X) -> np.ndarray:
     """
     return (X - X.mean()) / X.std()
 
+def	normalize(X) -> np.ndarray:
+	"""
+	Normalize the dataset to a range of [0, 1].
+	:param X: The input data.
+	:return: The normalized data.
+	"""
+	return (X - X.min()) / (X.max() - X.min())
+
 df = pd.read_csv("train.csv", header=None)
 y = df.iloc[:, 1].apply(lambda x: 1 if x == "M" else 0)
 X = df.iloc[:, 2:]
-X = standardize(X)
+X = normalize(X)
 
 nn = MultilayerPerceptron([
     Layer(X.shape[1], 20, "sigmoid"),
     Layer(20, 10, "sigmoid"),
     Layer(10, 1, "softmax")
-])
+], epochs=5000, learning_rate=0.05, early_stopping=False, verbose=True)
 
 nn.train(X, y)
+
+df = pd.read_csv("test.csv", header=None)
+y_test = df.iloc[:, 1].apply(lambda x: 1 if x == "M" else 0)
+X_test = df.iloc[:, 2:]
+X_test = normalize(X_test)
+
+accuracy = nn.evaluate(X_test.values, y_test.values)
+print(f"Accuracy: {accuracy * 100:.2f}%")
