@@ -10,7 +10,7 @@ activation_functions = {
         'derivative': lambda x: np.where(x > 0, 1, 0)
     },
     'softmax': {
-        'function': lambda x: np.exp(x - x.max()) / np.exp(x - x.max()).sum(),
+        'function': lambda x: np.exp(x) / np.exp(x).sum(),
         'derivative': lambda x: x * (1 - x)
     }
 }
@@ -40,31 +40,13 @@ class MultilayerPerceptron:
         self.early_stopping = early_stopping
         self.verbose = verbose
 
-    def binary_cross_entropy(self, y_true, y_pred):
-        """
-        Binary cross-entropy loss function.
-        :param y_true: True labels.
-        :param y_pred: Predicted labels.
-        :return: Binary cross-entropy loss.
-        """
-        return -np.mean(y_true * np.log(y_pred + 1e-15) + (1 - y_true) * np.log(1 - y_pred + 1e-15))
-
-    def binary_cross_entropy_derivative(self, y_true, y_pred):
-        """
-        Derivative of binary cross-entropy loss function.
-        :param y_true: True labels.
-        :param y_pred: Predicted labels.
-        :return: Derivative of binary cross-entropy loss.
-        """
-        return (y_pred - y_true) / (y_pred * (1 - y_pred) + 1e-15)
-
-    # def cost(self, y_true, y_pred):
-    #     '''Mean Squared Error cost function.'''
-    #     return np.mean((y_true - y_pred) ** 2)
+    def cost(self, y_true, y_pred):
+        '''Mean Squared Error cost function.'''
+        return np.mean((y_true - y_pred) ** 2)
     
-    # def cost_derivative(self, y_true, y_pred):
-    #     '''Derivative of the cost function.'''
-    #     return y_pred - y_true
+    def cost_derivative(self, y_true, y_pred):
+        '''Derivative of the cost function.'''
+        return y_pred - y_true
     
     def feedforward(self, X):
         for i, layer in enumerate(self.layers):
@@ -80,7 +62,7 @@ class MultilayerPerceptron:
         for l in reversed(range(len(self.layers))):
             layer = self.layers[l]
             if (l == len(self.layers) - 1):
-                deltas.insert(0, self.binary_cross_entropy_derivative(y, layer.output) * layer.derivative_activation_function(layer.output))
+                deltas.insert(0, self.cost_derivative(y[0], layer.output) * layer.derivative_activation_function(layer.output))
             else:
                 deltas.insert(0, (deltas[0] @ self.layers[l + 1].weights.T) * layer.derivative_activation_function(layer.output))
 
@@ -93,9 +75,8 @@ class MultilayerPerceptron:
             y_pred = self.feedforward(X)
             self.backpropagation(X, y)
             if epoch % 100 == 0 and self.verbose:
-                loss.append(self.binary_cross_entropy(y, y_pred))
+                loss.append(self.cost(y, y_pred))
                 print(f"Epoch: {epoch}, Loss: {loss[-1]}")
-        print(f"Final Loss: {loss}")
 
     def predict(self, X):
         """
@@ -115,6 +96,8 @@ class MultilayerPerceptron:
         :return: The accuracy of the model.
         """
         y_pred = self.predict(X)
-        y_pred = np.argmax(y_pred, axis=1)
-        accuracy = np.mean(y_pred == y)
+        y_pred = np.round(y_pred)
+        y_true = y.reshape(y_pred.shape)
+
+        accuracy = np.mean(y_pred == y_true)
         return accuracy

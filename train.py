@@ -2,7 +2,7 @@ from MultilayerPerceptron import MultilayerPerceptron, Layer
 import numpy as np
 import pandas as pd
 
-def standardize(X) -> np.ndarray:
+def standarize(X) -> np.ndarray:
     """
     Standardize the dataset by removing the mean and scaling to unit variance.
     :param X: The input data.
@@ -24,10 +24,9 @@ X = df.iloc[:, 2:]
 X = normalize(X)
 
 nn = MultilayerPerceptron([
-    Layer(X.shape[1], 20, "sigmoid"),
-    Layer(20, 10, "sigmoid"),
-    Layer(10, 1, "softmax")
-], epochs=5000, learning_rate=0.05, early_stopping=False, verbose=True)
+    Layer(X.shape[1], 1, "sigmoid"),
+    Layer(1, 1, "sigmoid")
+], epochs=2000, learning_rate=0.2, early_stopping=False, verbose=True)
 
 nn.train(X, y)
 
