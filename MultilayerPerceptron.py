@@ -40,10 +40,10 @@ class MultilayerPerceptron:
         self.early_stopping = early_stopping
         self.verbose = verbose
 
-    def cost(self, y_true, y_pred):
-        '''Mean Squared Error cost function.'''
-        return np.mean((y_true - y_pred) ** 2)
-    
+    def binary_cross_entropy(self, y_true, y_pred):
+        '''Binary cross-entropy cost function.'''
+        return -np.mean(y_true * np.log(y_pred + 1e-15) + (1 - y_true) * np.log(1 - y_pred + 1e-15)) 
+
     def cost_derivative(self, y_true, y_pred):
         '''Derivative of the cost function.'''
         return y_pred - y_true
@@ -75,7 +75,7 @@ class MultilayerPerceptron:
             y_pred = self.feedforward(X)
             self.backpropagation(X, y)
             if epoch % 100 == 0 and self.verbose:
-                loss.append(self.cost(y, y_pred))
+                loss.append(self.binary_cross_entropy(y, y_pred))
                 print(f"Epoch: {epoch}, Loss: {loss[-1]}")
 
     def predict(self, X):
@@ -86,7 +86,7 @@ class MultilayerPerceptron:
         """
         for layer in self.layers:
             X = layer.activation_function(X @ layer.weights + layer.biases)
-        return X
+        return X.astype(int)
 
     def evaluate(self, X, y):
         """
@@ -97,7 +97,10 @@ class MultilayerPerceptron:
         """
         y_pred = self.predict(X)
         y_pred = np.round(y_pred)
-        y_true = y.reshape(y_pred.shape)
+        y_true = np.round(y)
+
+        print(f"Predictions: {y_pred}")
+        print(f"True labels: {y_true}")
 
         accuracy = np.mean(y_pred == y_true)
         return accuracy

@@ -18,22 +18,33 @@ def	normalize(X) -> np.ndarray:
 	"""
 	return (X - X.min()) / (X.max() - X.min())
 
-df = pd.read_csv("train.csv", header=None)
-y = df.iloc[:, 1].apply(lambda x: 1 if x == "M" else 0)
-X = df.iloc[:, 2:]
-X = normalize(X)
+df_train = pd.read_csv('./train.csv', header=None)
+df_train.columns = ['id', 'diagnosis'] + [f'feature_{i}' for i in range(1, 31)]
+df_train['diagnosis'] = df_train['diagnosis'].map({'M': 1, 'B': 0})
+df_train.drop(columns=['id'], inplace=True)
+
+X_train = df_train.drop(columns='diagnosis')
+y_train = df_train['diagnosis']
+
+X_train = normalize(X_train)
 
 nn = MultilayerPerceptron([
-    Layer(X.shape[1], 1, "sigmoid"),
-    Layer(1, 1, "sigmoid")
-], epochs=2000, learning_rate=0.2, early_stopping=False, verbose=True)
+    Layer(X_train.shape[1], 25, "sigmoid"),
+    Layer(25, 15, "sigmoid"),
+    Layer(15, 1, "sigmoid")
+], epochs=2000, learning_rate=0.1, early_stopping=False, verbose=True)
 
-nn.train(X, y)
+nn.train(X_train, y_train)
 
-df = pd.read_csv("test.csv", header=None)
-y_test = df.iloc[:, 1].apply(lambda x: 1 if x == "M" else 0)
-X_test = df.iloc[:, 2:]
-X_test = normalize(X_test)
+#####################################################33
 
-accuracy = nn.evaluate(X_test.values, y_test.values)
+df_test = pd.read_csv('./test.csv', header=None)
+df_test.columns = ['id', 'diagnosis'] + [f'feature_{i}' for i in range(1, 31)]
+df_test['diagnosis'] = df_test['diagnosis'].map({'M': 1, 'B': 0})
+df_test.drop(columns=['id'], inplace=True)
+
+X_test = df_test.drop(columns='diagnosis')
+y_test = df_test['diagnosis']
+
+accuracy = nn.evaluate(X_test, y_test)
 print(f"Accuracy: {accuracy * 100:.2f}%")
