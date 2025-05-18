@@ -86,7 +86,7 @@ class MultilayerPerceptron:
         """
         for layer in self.layers:
             X = layer.activation_function(X @ layer.weights + layer.biases)
-        return X.astype(int)
+        return X.to_numpy().flatten()
 
     def evaluate(self, X, y):
         """
@@ -95,12 +95,10 @@ class MultilayerPerceptron:
         :param y: The true labels.
         :return: The accuracy of the model.
         """
-        y_pred = self.predict(X)
-        y_pred = np.round(y_pred)
-        y_true = np.round(y)
+        y_pred = np.round(self.predict(X)).astype(int)
+        y_true = np.round(y).values.astype(int)
 
         print(f"Predictions: {y_pred}")
         print(f"True labels: {y_true}")
 
-        accuracy = np.mean(y_pred == y_true)
-        return accuracy
+        return np.mean(y_pred == y_true)
