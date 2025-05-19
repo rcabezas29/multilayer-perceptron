@@ -24,7 +24,12 @@ class Layer:
         self.output = np.zeros((1, n_neurons))
 
 class MultilayerPerceptron:
-    def __init__(self, layers: list, epochs: int = 50000, learning_rate: float = 0.05, early_stopping: bool = False, verbose: bool = False):
+    def __init__(self, layers: list,
+                 epochs: int = 50000,
+                 learning_rate: float = 0.05,
+                 early_stopping: bool = False,
+                 verbose: bool = False,
+                 adam: bool = False):
         """
         Multilayer Perceptron constructor.
         :param layers: List of Layer objects.
@@ -39,15 +44,18 @@ class MultilayerPerceptron:
         self.learning_rate = learning_rate
         self.early_stopping = early_stopping
         self.verbose = verbose
+        self.adam = adam
+        self.momentum = 0.9
+        self.velocity = [np.zeros(layer.weights.shape) for layer in layers]
 
     def binary_cross_entropy(self, y_true, y_pred):
         '''Binary cross-entropy cost function.'''
-        return -np.mean(y_true * np.log(y_pred + 1e-15) + (1 - y_true) * np.log(1 - y_pred + 1e-15)) 
-
-    def cost_derivative(self, y_true, y_pred):
-        '''Derivative of the cost function.'''
-        return y_pred - y_true
+        return -np.mean(y_true * np.log(y_pred + 1e-15) + (1 - y_true) * np.log(1 - y_pred + 1e-15))
     
+    def binary_cross_entropy_derivative(self, y_true, y_pred):
+        '''Derivative of the binary cross-entropy cost function.'''
+        return -(y_true / y_pred + 1e-15) + (1 - y_true) / (1 - y_pred + 1e-15)
+
     def feedforward(self, X):
         for i, layer in enumerate(self.layers):
             if i == 0:
@@ -62,12 +70,17 @@ class MultilayerPerceptron:
         for l in reversed(range(len(self.layers))):
             layer = self.layers[l]
             if (l == len(self.layers) - 1):
-                deltas.insert(0, self.cost_derivative(y[0], layer.output) * layer.derivative_activation_function(layer.output))
+                deltas.insert(0, self.binary_cross_entropy_derivative(y, layer.output) * layer.derivative_activation_function(layer.output))
             else:
                 deltas.insert(0, (deltas[0] @ self.layers[l + 1].weights.T) * layer.derivative_activation_function(layer.output))
 
-            layer.weights -= self.learning_rate * (X if l == 0 else self.layers[l - 1].output).T @ deltas[0]
-            layer.biases -= self.learning_rate * np.mean(deltas[0])
+            if self.adam:
+                self.velocity[l] = self.momentum * self.velocity[l] + (1 - self.momentum) * (X if l == 0 else self.layers[l - 1].output).T @ deltas[0]
+                layer.weights -= self.learning_rate * self.velocity[l]
+                layer.biases -= self.learning_rate * np.mean(deltas[0])
+            else:
+                layer.weights -= self.learning_rate * (X if l == 0 else self.layers[l - 1].output).T @ deltas[0]
+                layer.biases -= self.learning_rate * np.mean(deltas[0], axis=0, keepdims=True)
 
     def train(self, X, y):
         loss = []
@@ -84,9 +97,13 @@ class MultilayerPerceptron:
         :param X: The input data.
         :return: The predicted output.
         """
-        for layer in self.layers:
-            X = layer.activation_function(X @ layer.weights + layer.biases)
-        return X.to_numpy().flatten()
+        output = list()
+        for i, layer in enumerate(self.layers):
+            if i == 0:
+                output.append(layer.activation_function(X @ layer.weights + layer.biases))
+            else:
+                output.append(layer.activation_function(output[-1] @ layer.weights + layer.biases))
+        return output[-1].flatten()
 
     def evaluate(self, X, y):
         """
@@ -96,9 +113,9 @@ class MultilayerPerceptron:
         :return: The accuracy of the model.
         """
         y_pred = np.round(self.predict(X)).astype(int)
-        y_true = np.round(y).values.astype(int)
+        y_true = np.round(y).astype(int)
 
         print(f"Predictions: {y_pred}")
-        print(f"True labels: {y_true}")
+        print(f"True labels: {y_true.flatten()}")
 
-        return np.mean(y_pred == y_true)
+        return np.mean(y_pred == y_true.flatten())
