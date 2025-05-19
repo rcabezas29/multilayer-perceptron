@@ -32,13 +32,13 @@ X_train = scaler.fit_transform(X_train)
 
 nn = MultilayerPerceptron([
     Layer(X_train.shape[1], 25, "sigmoid"),
-    Layer(25, 15, "sigmoid"),
+    Layer(25, 15, "relu"),
     Layer(15, 1, "sigmoid")
-], epochs=2000, learning_rate=0.0001, early_stopping=False, verbose=True, adam=True)
+], epochs=100, learning_rate=0.001, early_stopping=False, verbose=True)
 
 nn.train(X_train, y_train)
 
-#####################################################33
+#####################################################
 
 df_test = pd.read_csv('./test.csv', header=None)
 df_test.columns = ['id', 'diagnosis'] + [f'feature_{i}' for i in range(1, 31)]

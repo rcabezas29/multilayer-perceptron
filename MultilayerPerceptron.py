@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 activation_functions = {
     'sigmoid': {
@@ -84,12 +85,25 @@ class MultilayerPerceptron:
 
     def train(self, X, y):
         loss = []
-        for epoch in range(self.epochs):
+        accuracy = []
+        for _ in range(self.epochs):
             y_pred = self.feedforward(X)
             self.backpropagation(X, y)
-            if epoch % 100 == 0 and self.verbose:
+            if self.verbose:
                 loss.append(self.binary_cross_entropy(y, y_pred))
-                print(f"Epoch: {epoch}, Loss: {loss[-1]}")
+                accuracy.append(self.evaluate(X, y))
+        if self.verbose:
+            _, axs = plt.subplots(1, 2, figsize=(12, 5))
+            axs[0].plot(loss)
+            axs[0].set_title('Loss over epochs')
+            axs[0].set_xlabel('Epochs')
+            axs[0].set_ylabel('Loss')
+            axs[1].plot(accuracy)
+            axs[1].set_title('Accuracy over epochs')
+            axs[1].set_xlabel('Epochs')
+            axs[1].set_ylabel('Accuracy')
+            plt.tight_layout()
+            plt.show()
 
     def predict(self, X):
         """
@@ -114,8 +128,5 @@ class MultilayerPerceptron:
         """
         y_pred = np.round(self.predict(X)).astype(int)
         y_true = np.round(y).astype(int)
-
-        print(f"Predictions: {y_pred}")
-        print(f"True labels: {y_true.flatten()}")
 
         return np.mean(y_pred == y_true.flatten())
