@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 activation_functions = {
     'sigmoid': {
@@ -86,7 +87,7 @@ class MultilayerPerceptron:
     def train(self, X, y):
         loss = []
         accuracy = []
-        for _ in range(self.epochs):
+        for _ in tqdm(range(self.epochs)):
             y_pred = self.feedforward(X)
             self.backpropagation(X, y)
             if self.verbose:

@@ -34,7 +34,7 @@ nn = MultilayerPerceptron([
     Layer(X_train.shape[1], 25, "sigmoid"),
     Layer(25, 15, "relu"),
     Layer(15, 1, "sigmoid")
-], epochs=100, learning_rate=0.001, early_stopping=False, verbose=True)
+], epochs=200, learning_rate=0.001, early_stopping=False, verbose=True, adam=True)
 
 nn.train(X_train, y_train)
 
