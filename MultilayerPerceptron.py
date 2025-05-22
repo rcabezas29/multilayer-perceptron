@@ -47,8 +47,9 @@ class MultilayerPerceptron:
         self.early_stopping = early_stopping
         self.verbose = verbose
         self.adam = adam
-        self.momentum = 0.9
-        self.velocity = [np.zeros(layer.weights.shape) for layer in layers]
+        self.decay_rates = (0.9, 0.9)
+        self.mean_momentum = [np.zeros(layer.weights.shape) for layer in layers]
+        self.var_momentum = [np.zeros(layer.weights.shape) for layer in layers]
 
     def binary_cross_entropy(self, y_true, y_pred):
         '''Binary cross-entropy cost function.'''
@@ -77,12 +78,14 @@ class MultilayerPerceptron:
                 deltas.insert(0, (deltas[0] @ self.layers[l + 1].weights.T) * layer.derivative_activation_function(layer.output))
 
             if self.adam:
-                self.velocity[l] = self.momentum * self.velocity[l] + (1 - self.momentum) * (X if l == 0 else self.layers[l - 1].output).T @ deltas[0]
-                layer.weights -= self.learning_rate * self.velocity[l]
-                layer.biases -= self.learning_rate * np.mean(deltas[0])
+                self.mean_momentum[l] = self.decay_rates[0] * self.mean_momentum[l] + (1 - self.decay_rates[0]) * ((X if l == 0 else self.layers[l - 1].output).T @ deltas[0])
+                self.var_momentum[l] = self.decay_rates[1] * self.var_momentum[l] + (1 - self.decay_rates[1]) * (((X if l == 0 else self.layers[l - 1].output).T @ deltas[0]) ** 2)
+                mean_momentum_hat = self.mean_momentum[l] / (1 - self.decay_rates[0] ** (self.epochs + 1))
+                var_momentum_hat = self.var_momentum[l] / (1 - self.decay_rates[1] ** (self.epochs + 1))
+                layer.weights -= self.learning_rate * mean_momentum_hat / (np.sqrt(var_momentum_hat) + 1e-15)
             else:
                 layer.weights -= self.learning_rate * (X if l == 0 else self.layers[l - 1].output).T @ deltas[0]
-                layer.biases -= self.learning_rate * np.mean(deltas[0], axis=0, keepdims=True)
+            layer.biases -= self.learning_rate * np.mean(deltas[0])
 
     def train(self, X, y):
         loss = []
