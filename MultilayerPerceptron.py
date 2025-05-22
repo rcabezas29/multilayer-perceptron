@@ -11,10 +11,22 @@ activation_functions = {
         'function': lambda x: np.maximum(0, x),
         'derivative': lambda x: np.where(x > 0, 1, 0)
     },
-    'softmax': {
-        'function': lambda x: np.exp(x) / np.exp(x).sum(),
-        'derivative': lambda x: x * (1 - x)
-    }
+    'tanh': {
+		'function': lambda x: np.tanh(x),
+		'derivative': lambda x: 1 - np.tanh(x) ** 2
+	},
+    'leaky_relu': {
+		'function': lambda x: np.where(x > 0, x, 0.01 * x),
+		'derivative': lambda x: np.where(x > 0, 1, 0.01)
+	},
+    'elu': {
+		'function': lambda x: np.where(x > 0, x, np.exp(x) - 1),
+		'derivative': lambda x: np.where(x > 0, 1, np.exp(x))
+	},
+    'softmax': { # Softmax is not used as an activation function in hidden layers
+		'function': lambda x: x,
+		'derivative': lambda x: x
+	}
 }
 
 class Layer:
@@ -38,6 +50,9 @@ class MultilayerPerceptron:
         :param epochs: Number of training epochs.
         :param learning_rate: Learning rate for weight updates.
         :param early_stopping: Whether to use early stopping.
+        :param verbose: Whether to print training progress.
+        :param adam: Whether to use Adam optimization.
+        :raises ValueError: If less than two layers are provided.
         """
         if len(layers) < 2:
             raise ValueError("MultilayerPerceptron requires at least two Layers.")
@@ -51,49 +66,59 @@ class MultilayerPerceptron:
         self.mean_momentum = [np.zeros(layer.weights.shape) for layer in layers]
         self.var_momentum = [np.zeros(layer.weights.shape) for layer in layers]
 
-    def binary_cross_entropy(self, y_true, y_pred):
-        '''Binary cross-entropy cost function.'''
-        return -np.mean(y_true * np.log(y_pred + 1e-15) + (1 - y_true) * np.log(1 - y_pred + 1e-15))
-    
-    def binary_cross_entropy_derivative(self, y_true, y_pred):
-        '''Derivative of the binary cross-entropy cost function.'''
-        return -(y_true / y_pred + 1e-15) + (1 - y_true) / (1 - y_pred + 1e-15)
+    def softmax(self, x):
+        '''Softmax function.'''
+        exp_shifted = np.exp(x - np.max(x, axis=1, keepdims=True))
+        return exp_shifted / np.sum(exp_shifted, axis=1, keepdims=True)
+
+    def softmax_crossentropy_with_logits(self, reference_answers, logits):
+        '''Softmax cross-entropy cost function.'''
+        return -np.sum(reference_answers * np.log(self.softmax(logits) + 1e-15), axis=1).mean()
+
+    def grad_softmax_crossentropy_with_logits(self, reference_answers, logits):
+        '''Gradient of the softmax cross-entropy cost function.'''
+        return (self.softmax(logits) - reference_answers) / logits.shape[0]
 
     def feedforward(self, X):
-        for i, layer in enumerate(self.layers):
-            if i == 0:
-                layer.output = layer.activation_function(X @ layer.weights + layer.biases)
+        for l, layer in enumerate(self.layers):
+            z = X @ layer.weights + layer.biases if l == 0 else self.layers[l - 1].output @ layer.weights + layer.biases
+            if l == len(self.layers) - 1:
+                layer.output = self.softmax(z)
             else:
-                layer.output = layer.activation_function(self.layers[i - 1].output @ layer.weights + layer.biases)
+                layer.output = layer.activation_function(z)
         return self.layers[-1].output
-    
+
     def backpropagation(self, X, y):
         '''Backpropagation algorithm to update weights and biases.'''
-        deltas = list()
+        deltas = [None] * len(self.layers)
+        logits = self.layers[-2].output @ self.layers[-1].weights + self.layers[-1].biases
+    
         for l in reversed(range(len(self.layers))):
             layer = self.layers[l]
             if (l == len(self.layers) - 1):
-                deltas.insert(0, self.binary_cross_entropy_derivative(y, layer.output) * layer.derivative_activation_function(layer.output))
+                deltas[-1] = self.grad_softmax_crossentropy_with_logits(y, logits)
             else:
-                deltas.insert(0, (deltas[0] @ self.layers[l + 1].weights.T) * layer.derivative_activation_function(layer.output))
-
+                deltas[l] = (deltas[l + 1] @ self.layers[l + 1].weights.T) * layer.derivative_activation_function(layer.output)
+            
+            grad_w = (X if l == 0 else self.layers[l - 1].output).T @ deltas[l]
             if self.adam:
-                self.mean_momentum[l] = self.decay_rates[0] * self.mean_momentum[l] + (1 - self.decay_rates[0]) * ((X if l == 0 else self.layers[l - 1].output).T @ deltas[0])
-                self.var_momentum[l] = self.decay_rates[1] * self.var_momentum[l] + (1 - self.decay_rates[1]) * (((X if l == 0 else self.layers[l - 1].output).T @ deltas[0]) ** 2)
+                self.mean_momentum[l] = self.decay_rates[0] * self.mean_momentum[l] + (1 - self.decay_rates[0]) * grad_w
+                self.var_momentum[l] = self.decay_rates[1] * self.var_momentum[l] + (1 - self.decay_rates[1]) * (grad_w ** 2)
                 mean_momentum_hat = self.mean_momentum[l] / (1 - self.decay_rates[0] ** (self.epochs + 1))
                 var_momentum_hat = self.var_momentum[l] / (1 - self.decay_rates[1] ** (self.epochs + 1))
                 layer.weights -= self.learning_rate * mean_momentum_hat / (np.sqrt(var_momentum_hat) + 1e-15)
             else:
-                layer.weights -= self.learning_rate * (X if l == 0 else self.layers[l - 1].output).T @ deltas[0]
-            layer.biases -= self.learning_rate * np.mean(deltas[0])
+                layer.weights -= self.learning_rate * grad_w
+            layer.biases -= self.learning_rate * np.mean(deltas[l])
 
     def train(self, X, y):
+        '''Train the MLP using backpropagation and gradient descent.'''
         loss = []
         accuracy = []
         for _ in tqdm(range(self.epochs)):
             y_pred = self.feedforward(X)
             self.backpropagation(X, y)
-            loss.append(self.binary_cross_entropy(y, y_pred))
+            loss.append(self.softmax_crossentropy_with_logits(y, y_pred))
             if self.verbose:
                 accuracy.append(self.evaluate(X, y))
             if self.early_stopping and loss[-1] < 5e-3:
@@ -111,30 +136,19 @@ class MultilayerPerceptron:
             axs[1].set_ylabel('Accuracy')
             plt.tight_layout()
             plt.show()
-            
 
     def predict(self, X):
-        """
-        Predict the output for the given input data.
-        :param X: The input data.
-        :return: The predicted output.
-        """
-        output = list()
+        output = X
         for i, layer in enumerate(self.layers):
-            if i == 0:
-                output.append(layer.activation_function(X @ layer.weights + layer.biases))
+            z = output @ layer.weights + layer.biases
+            if i == len(self.layers) - 1:
+                output = self.softmax(z)
             else:
-                output.append(layer.activation_function(output[-1] @ layer.weights + layer.biases))
-        return output[-1].flatten()
+                output = layer.activation_function(z)
+        return output
 
     def evaluate(self, X, y):
-        """
-        Evaluate the model on the given data.
-        :param X: The input data.
-        :param y: The true labels.
-        :return: The accuracy of the model.
-        """
-        y_pred = np.round(self.predict(X)).astype(int)
-        y_true = np.round(y).astype(int)
-
-        return np.mean(y_pred == y_true.flatten())
+        y_pred = self.predict(X)
+        y_pred_labels = np.argmax(y_pred, axis=1)
+        y_true_labels = np.argmax(y, axis=1)
+        return np.mean(y_pred_labels == y_true_labels)
