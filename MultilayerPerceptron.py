@@ -90,9 +90,12 @@ class MultilayerPerceptron:
         for _ in tqdm(range(self.epochs)):
             y_pred = self.feedforward(X)
             self.backpropagation(X, y)
+            loss.append(self.binary_cross_entropy(y, y_pred))
             if self.verbose:
-                loss.append(self.binary_cross_entropy(y, y_pred))
                 accuracy.append(self.evaluate(X, y))
+            if self.early_stopping and loss[-1] < 5e-3:
+                break
+
         if self.verbose:
             _, axs = plt.subplots(1, 2, figsize=(12, 5))
             axs[0].plot(loss)
@@ -105,6 +108,7 @@ class MultilayerPerceptron:
             axs[1].set_ylabel('Accuracy')
             plt.tight_layout()
             plt.show()
+            
 
     def predict(self, X):
         """
