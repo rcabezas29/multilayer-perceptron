@@ -80,7 +80,158 @@ $$
 
 ---
 
+### 4. 📈 Tanh (Hyperbolic Tangent)
+
+The **tanh** function is similar to sigmoid but maps input values to the range **(-1, 1)** instead of (0, 1). It is zero-centered, which can help optimization converge faster than sigmoid.
+
+**Formula:**
+
+$$
+\tanh(x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+$$
+
+**Properties:**
+- Output between -1 and 1
+- Smooth and differentiable
+- Zero-centered (unlike sigmoid)
+- Can still suffer from vanishing gradients for large values
+
+---
+
+### 5. ⚡ Leaky ReLU
+
+**Leaky ReLU** is a variation of ReLU that allows a small, non-zero gradient when the unit is not active (i.e., when $x < 0$). This addresses the "dying ReLU" problem.
+
+**Formula:**
+
+$$
+\text{LeakyReLU}(x) = \begin{cases}
+x & \text{if } x \geq 0 \\
+\alpha x & \text{if } x < 0
+\end{cases}
+$$
+
+Where $\alpha$ is a small constant (commonly $\alpha = 0.01$).
+
+**Properties:**
+- Avoids dying ReLU by allowing small negative outputs
+- Introduces slight complexity with hyperparameter $\alpha$
+- Often used as a default fallback to standard ReLU
+
+---
+
+### 6. 🔥 ELU (Exponential Linear Unit)
+
+The **ELU** function improves upon ReLU and Leaky ReLU by allowing the negative part to saturate smoothly, which can help the network converge faster and perform better.
+
+**Formula:**
+
+$$
+\text{ELU}(x) = \begin{cases}
+x & \text{if } x \geq 0 \\
+\alpha (e^x - 1) & \text{if } x < 0
+\end{cases}
+$$
+
+Where $\alpha > 0$ controls the value to which an ELU saturates for negative inputs.
+
+**Properties:**
+- Smooth and continuous
+- Negative values help center activations around zero
+- Slightly more computationally expensive than ReLU
+
+---
+
 These functions are crucial for enabling the neural network to learn effectively and are chosen depending on the role of each layer in the network.
+
+## 📉 Cross-Entropy Error Function
+
+The **Cross-Entropy Error Function** is a widely used loss function for classification problems, especially when using softmax or sigmoid activations in the output layer. It measures the dissimilarity between the predicted probability distribution and the actual labels. The goal during training is to minimize this error.
+
+For binary classification, the formula is:
+
+$$
+E = -\frac{1}{N} \sum_{n=1}^{N} \left[ y_n \log(p_n) + (1 - y_n) \log(1 - p_n) \right]
+$$
+
+Where:
+- $N$ is the number of samples
+- $y_n$ is the true label (0 or 1) for sample $n$
+- $p_n$ is the predicted probability of the positive class for sample $n$
+
+For multi-class classification with softmax, the categorical cross-entropy is used:
+
+$$
+E = - \sum_{i=1}^{K} y_i \log(p_i)
+$$
+
+Where:
+- $K$ is the number of classes
+- $y_i$ is a one-hot encoded label vector
+- $p_i$ is the predicted probability for class $i$
+
+Cross-entropy penalizes confident but incorrect predictions heavily, making it highly effective for classification tasks.
+
+## ⚙️ Optimizers
+
+Optimizers are algorithms used to minimize the loss function by updating the weights of the neural network during training. Choosing the right optimizer can significantly impact the model’s performance and convergence speed.
+
+### 🧠 Adam Optimizer (Adaptive Moment Estimation)
+
+**Adam** is an adaptive learning rate optimization algorithm that combines the advantages of two other methods: **AdaGrad** and **RMSProp**. It computes individual adaptive learning rates for each parameter by maintaining both the **first moment (mean)** and **second moment (uncentered variance)** of the gradients.
+
+**Update equations:**
+
+Given gradients $g_t$ at time step $t$:
+
+1. Compute biased first moment estimate:
+   $$
+   m_t = \beta_1 \cdot m_{t-1} + (1 - \beta_1) \cdot g_t
+   $$
+
+2. Compute biased second raw moment estimate:
+   $$
+   v_t = \beta_2 \cdot v_{t-1} + (1 - \beta_2) \cdot g_t^2
+   $$
+
+3. Correct bias in the estimates:
+   $$
+   \hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \quad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}
+   $$
+
+4. Update parameters:
+   $$
+   \theta_t = \theta_{t-1} - \eta \cdot \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}
+   $$
+
+Where:
+- $\eta$ is the learning rate
+- $\beta_1$ and $\beta_2$ are decay rates (commonly 0.9 and 0.999)
+- $\epsilon$ is a small number to avoid division by zero
+
+**Advantages:**
+- Works well with sparse gradients
+- Requires minimal tuning
+- Fast convergence
+
+---
+
+### ⏹️ Early Stopping
+
+**Early Stopping** is a regularization technique used to prevent overfitting. It monitors the validation loss during training and halts training when the performance stops improving.
+
+In this implementation, the training process stops if the validation loss reaches a mimimum. This helps preserve the best version of the model without overtraining it.
+
+**How it works:**
+- Track the best validation loss observed
+- If the validation loss hasn't improved for `patience` epochs, stop training
+- Optionally, restore the best model weights
+
+**Benefits:**
+- Saves training time
+- Improves generalization
+- Reduces risk of overfitting
+
 
 ## 🧬 [Dataset](./datasets/data.csv)
 
