@@ -185,24 +185,28 @@ Optimizers are algorithms used to minimize the loss function by updating the wei
 Given gradients $g_t$ at time step $t$:
 
 1. Compute biased first moment estimate:
-   $$
-   m_t = \beta_1 \cdot m_{t-1} + (1 - \beta_1) \cdot g_t
-   $$
+
+$$
+m_t = \beta_1 \cdot m_{t-1} + (1 - \beta_1) \cdot g_t
+$$
 
 2. Compute biased second raw moment estimate:
-   $$
-   v_t = \beta_2 \cdot v_{t-1} + (1 - \beta_2) \cdot g_t^2
-   $$
+
+$$
+v_t = \beta_2 \cdot v_{t-1} + (1 - \beta_2) \cdot g_t^2
+$$
 
 3. Correct bias in the estimates:
-   $$
-   \hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \quad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}
-   $$
+
+$$
+\hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \quad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}
+$$
 
 4. Update parameters:
-   $$
-   \theta_t = \theta_{t-1} - \eta \cdot \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}
-   $$
+
+$$
+\theta_t = \theta_{t-1} - \eta \cdot \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}
+$$
 
 Where:
 - $\eta$ is the learning rate
@@ -221,11 +225,6 @@ Where:
 **Early Stopping** is a regularization technique used to prevent overfitting. It monitors the validation loss during training and halts training when the performance stops improving.
 
 In this implementation, the training process stops if the validation loss reaches a mimimum. This helps preserve the best version of the model without overtraining it.
-
-**How it works:**
-- Track the best validation loss observed
-- If the validation loss hasn't improved for `patience` epochs, stop training
-- Optionally, restore the best model weights
 
 **Benefits:**
 - Saves training time
