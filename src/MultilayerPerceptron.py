@@ -73,7 +73,7 @@ class MultilayerPerceptron:
 
     def softmax_crossentropy_with_logits(self, reference_answers, logits):
         '''Softmax cross-entropy cost function.'''
-        return -np.sum(reference_answers * np.log(self.softmax(logits) + 1e-15), axis=1).mean()
+        return np.mean(-np.sum(reference_answers * np.log(logits + 1e-15), axis=1))
 
     def grad_softmax_crossentropy_with_logits(self, reference_answers, logits):
         '''Gradient of the softmax cross-entropy cost function.'''
@@ -134,6 +134,46 @@ class MultilayerPerceptron:
             axs[1].set_title('Accuracy over epochs')
             axs[1].set_xlabel('Epochs')
             axs[1].set_ylabel('Accuracy')
+            plt.tight_layout()
+            plt.show()
+            
+    def train_with_validation(self, X_train, y_train, X_val, y_val, show_plots=True):
+        '''Train the MLP using backpropagation and gradient descent with validation.'''
+        loss = []
+        accuracy = []
+        val_loss = []
+        val_accuracy = []
+        for epoch in range(self.epochs):
+            y_pred = self.feedforward(X_train)
+            self.backpropagation(X_train, y_train)
+            loss.append(self.softmax_crossentropy_with_logits(y_train, y_pred))
+            val_loss.append(self.softmax_crossentropy_with_logits(y_val, self.predict(X_val)))
+
+            if self.verbose:
+                print(f"epoch {epoch+1:02d}/{self.epochs} - loss: {loss[-1]:.4f}  - val_loss: {val_loss[-1]:4f}", end='\r')
+
+            if show_plots:
+                accuracy.append(self.evaluate(X_train, y_train))
+                val_accuracy.append(self.evaluate(X_val, y_val))
+            if self.early_stopping and loss[-1] < 5e-3:
+                break
+
+        if show_plots:
+            _, axs = plt.subplots(1, 2, figsize=(12, 5))
+            axs[0].plot(loss, label='Training Loss', color='blue')
+            axs[0].plot(val_loss, label='Validation Loss', color='orange')
+            axs[0].set_title('Loss over epochs')
+            axs[0].set_xlabel('Epochs')
+            axs[0].set_ylabel('Loss')
+            axs[0].legend()
+            
+            axs[1].plot(accuracy, label='Training Accuracy', color='blue')
+            axs[1].plot(val_accuracy, label='Validation Accuracy', color='orange')
+            axs[1].set_title('Accuracy over epochs')
+            axs[1].set_xlabel('Epochs')
+            axs[1].set_ylabel('Accuracy')
+            axs[1].legend()
+            
             plt.tight_layout()
             plt.show()
 
