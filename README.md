@@ -38,6 +38,8 @@ $$
 \sigma(x) = \frac{1}{1 + e^{-x}}
 $$
 
+![Sigmoid](./assets/sigmoid.png)
+
 **Properties:**
 - Smooth, differentiable
 - Output between 0 and 1
@@ -55,6 +57,7 @@ $$
 \text{ReLU}(x) = \max(0, x)
 $$
 
+![ReLU](./assets/relu.png)
 
 **Properties:**
 - Fast to compute
@@ -73,6 +76,8 @@ $$
 \text{softmax}(z_i) = \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}
 $$
 
+![Softmax](./assets/softmax.png)
+
 **Properties:**
 - Outputs sum to 1 (interpreted as probabilities)
 - Amplifies differences between values
@@ -89,6 +94,8 @@ The **tanh** function is similar to sigmoid but maps input values to the range *
 $$
 \tanh(x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 $$
+
+![Tanh](./assets/tanh.png)
 
 **Properties:**
 - Output between -1 and 1
@@ -111,6 +118,8 @@ x & \text{if } x \geq 0 \\
 \end{cases}
 $$
 
+![Leaky ReLU](./assets/leaky_realu.png)
+
 Where $\alpha$ is a small constant (commonly $\alpha = 0.01$).
 
 **Properties:**
@@ -132,6 +141,8 @@ x & \text{if } x \geq 0 \\
 \alpha (e^x - 1) & \text{if } x < 0
 \end{cases}
 $$
+
+![ELU](./assets/elu.png)
 
 Where $\alpha > 0$ controls the value to which an ELU saturates for negative inputs.
 
