@@ -5,12 +5,16 @@ import pandas as pd
 import sys
 import os
 
-if not (len(sys.argv) == 2 and os.path.isfile(sys.argv[1])):
-	print("Provide dataset to splt into train and test sets.")
-	print("Usage: python train.py <data.csv>")
-	sys.exit(1)
+if os.path.exists("train.csv") and os.path.exists("test.csv"):
+    df_train = pd.read_csv("train.csv").copy()
+    df_test = pd.read_csv("test.csv").copy()
 else:
-	df = pd.read_csv(sys.argv[1])
+    # Read the dataset from a CSV file as parameter
+	if len(sys.argv) != 2:
+		print("Usage: python train.py <path_to_csv_file>")
+		sys.exit(1)
+	file_path = sys.argv[1]
+	df = pd.read_csv(file_path)
 	df_train, df_test = split_dataset(df)
 
 df_train.columns = ['id', 'diagnosis'] + [f'feature_{i}' for i in range(1, 31)]
@@ -40,8 +44,5 @@ y_test = to_categorical(y_test, num_classes=2)
 X_test = standardize(X_test)
 
 nn.train_with_validation(X_train, y_train, X_test, y_test)
-
-accuracy = nn.evaluate(X_test, y_test)
-print(f"\nAccuracy: {accuracy * 100:.2f}%")
 
 nn.save()

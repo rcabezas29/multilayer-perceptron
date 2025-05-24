@@ -174,6 +174,9 @@ class MultilayerPerceptron:
             plt.tight_layout()
             plt.show()
 
+        if self.verbose:
+            print('\n')
+
     def predict(self, X):
         output = X
         for i, layer in enumerate(self.layers):
