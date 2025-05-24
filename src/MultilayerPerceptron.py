@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import json
+from .losses import *
 
 activation_functions = {
     'sigmoid': {
@@ -51,7 +52,8 @@ class MultilayerPerceptron:
                  learning_rate: float = 0.05,
                  early_stopping: bool = False,
                  verbose: bool = False,
-                 adam: bool = False):
+                 adam: bool = False,
+                 loss: Loss = CategoricalCrossentropy()):
         """
         Multilayer Perceptron constructor.
         :param layers: List of Layer objects.
@@ -70,14 +72,7 @@ class MultilayerPerceptron:
         self.decay_rates = (0.9, 0.9)
         self.mean_momentum = [np.zeros(layer.weights.shape) for layer in layers]
         self.var_momentum = [np.zeros(layer.weights.shape) for layer in layers]
-
-    def softmax_crossentropy_with_logits(self, reference_answers, logits):
-        '''Softmax cross-entropy cost function.'''
-        return np.mean(-np.sum(reference_answers * np.log(logits + 1e-15), axis=1))
-
-    def grad_softmax_crossentropy_with_logits(self, reference_answers, logits):
-        '''Gradient of the softmax cross-entropy cost function.'''
-        return (activation_functions['softmax']['function'](logits) - reference_answers) / logits.shape[0]
+        self.loss = loss
 
     def feedforward(self, X):
         for l, layer in enumerate(self.layers):
@@ -93,7 +88,7 @@ class MultilayerPerceptron:
         for l in reversed(range(len(self.layers))):
             layer = self.layers[l]
             if (l == len(self.layers) - 1):
-                deltas[-1] = self.grad_softmax_crossentropy_with_logits(y, logits)
+                deltas[-1] = self.loss.gradient(y, self.layers[l].activation_function(logits))
             else:
                 deltas[l] = (deltas[l + 1] @ self.layers[l + 1].weights.T) * layer.derivative_activation_function(layer.output)
             
@@ -115,7 +110,7 @@ class MultilayerPerceptron:
         for _ in tqdm(range(self.epochs)):
             y_pred = self.feedforward(X)
             self.backpropagation(X, y)
-            loss.append(self.softmax_crossentropy_with_logits(y, y_pred))
+            loss.append(self.loss.loss(y, y_pred))
             if self.verbose:
                 accuracy.append(self.evaluate(X, y))
             if self.early_stopping and loss[-1] < 5e-3:
@@ -143,8 +138,8 @@ class MultilayerPerceptron:
         for epoch in range(self.epochs):
             y_pred = self.feedforward(X_train)
             self.backpropagation(X_train, y_train)
-            loss.append(self.softmax_crossentropy_with_logits(y_train, y_pred))
-            val_loss.append(self.softmax_crossentropy_with_logits(y_val, self.predict(X_val)))
+            loss.append(self.loss.loss(y_train, y_pred))
+            val_loss.append(self.loss.loss(y_val, self.predict(X_val)))
 
             if self.verbose:
                 print(f"epoch {epoch+1:02d}/{self.epochs} - loss: {loss[-1]:.4f}  - val_loss: {val_loss[-1]:4f}", end='\r')
