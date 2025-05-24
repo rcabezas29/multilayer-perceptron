@@ -44,3 +44,4 @@ nn.train_with_validation(X_train, y_train, X_test, y_test)
 accuracy = nn.evaluate(X_test, y_test)
 print(f"\nAccuracy: {accuracy * 100:.2f}%")
 
+nn.save()

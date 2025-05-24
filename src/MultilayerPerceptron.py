@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import json
 
 activation_functions = {
     'sigmoid': {
@@ -24,21 +25,28 @@ activation_functions = {
 		'derivative': lambda x: np.where(x > 0, 1, np.exp(x))
 	},
     'softmax': { # Softmax is not used as an activation function in hidden layers
-		'function': lambda x: x,
+		'function': lambda x: np.exp(x - np.max(x, axis=1, keepdims=True)) / np.sum(np.exp(x - np.max(x, axis=1, keepdims=True)), axis=1, keepdims=True),
 		'derivative': lambda x: x
 	}
 }
 
 class Layer:
     def __init__(self, n_inputs: int, n_neurons: int, activation_function: str):
+        self.activation_function_name = activation_function
         self.activation_function = activation_functions[activation_function]['function']
         self.derivative_activation_function = activation_functions[activation_function]['derivative']
         self.weights = np.random.rand(n_inputs, n_neurons) * 2 - 1
         self.biases = np.random.rand(1, n_neurons) * 2 - 1
         self.output = np.zeros((1, n_neurons))
 
+    def __repr__(self):
+        return f"Layer(n_inputs={self.weights.shape[0]}, n_neurons={self.weights.shape[1]}, activation_function='{self.activation_function_name}')"
+    
+    def __str__(self):
+        return f"Layer with {self.weights.shape[0]} inputs, {self.weights.shape[1]} neurons, using '{self.activation_function_name}' activation function."
+
 class MultilayerPerceptron:
-    def __init__(self, layers: list,
+    def __init__(self, layers: list = [],
                  epochs: int = 50000,
                  learning_rate: float = 0.05,
                  early_stopping: bool = False,
@@ -52,10 +60,7 @@ class MultilayerPerceptron:
         :param early_stopping: Whether to use early stopping.
         :param verbose: Whether to print training progress.
         :param adam: Whether to use Adam optimization.
-        :raises ValueError: If less than two layers are provided.
         """
-        if len(layers) < 2:
-            raise ValueError("MultilayerPerceptron requires at least two Layers.")
         self.layers = layers
         self.epochs = epochs
         self.learning_rate = learning_rate
@@ -66,26 +71,18 @@ class MultilayerPerceptron:
         self.mean_momentum = [np.zeros(layer.weights.shape) for layer in layers]
         self.var_momentum = [np.zeros(layer.weights.shape) for layer in layers]
 
-    def softmax(self, x):
-        '''Softmax function.'''
-        exp_shifted = np.exp(x - np.max(x, axis=1, keepdims=True))
-        return exp_shifted / np.sum(exp_shifted, axis=1, keepdims=True)
-
     def softmax_crossentropy_with_logits(self, reference_answers, logits):
         '''Softmax cross-entropy cost function.'''
         return np.mean(-np.sum(reference_answers * np.log(logits + 1e-15), axis=1))
 
     def grad_softmax_crossentropy_with_logits(self, reference_answers, logits):
         '''Gradient of the softmax cross-entropy cost function.'''
-        return (self.softmax(logits) - reference_answers) / logits.shape[0]
+        return (activation_functions['softmax']['function'](logits) - reference_answers) / logits.shape[0]
 
     def feedforward(self, X):
         for l, layer in enumerate(self.layers):
             z = X @ layer.weights + layer.biases if l == 0 else self.layers[l - 1].output @ layer.weights + layer.biases
-            if l == len(self.layers) - 1:
-                layer.output = self.softmax(z)
-            else:
-                layer.output = layer.activation_function(z)
+            layer.output = layer.activation_function(z)
         return self.layers[-1].output
 
     def backpropagation(self, X, y):
@@ -181,10 +178,7 @@ class MultilayerPerceptron:
         output = X
         for i, layer in enumerate(self.layers):
             z = output @ layer.weights + layer.biases
-            if i == len(self.layers) - 1:
-                output = self.softmax(z)
-            else:
-                output = layer.activation_function(z)
+            output = layer.activation_function(z)
         return output
 
     def evaluate(self, X, y):
@@ -192,3 +186,32 @@ class MultilayerPerceptron:
         y_pred_labels = np.argmax(y_pred, axis=1)
         y_true_labels = np.argmax(y, axis=1)
         return np.mean(y_pred_labels == y_true_labels)
+
+    def save(self, filename='saved_model.json'):
+        '''Save the model to a file.'''
+        json_data = []
+        for layer in self.layers:
+            l = {
+                'weights': layer.weights.tolist(),
+                'biases': layer.biases.tolist(),
+                'activation_function': layer.activation_function_name
+            }
+            json_data.append(l)
+        with open(filename, 'w') as f:
+            json.dump(json_data, f, indent=4)
+        print(f"saving model './{filename}' to disk...")
+
+    def load(self, filename):
+        '''Load the model from a file.'''
+        with open(filename, 'r') as f:
+            json_data = json.load(f)
+        self.layers = []
+        for layer_data in json_data:
+            layer = Layer(
+                n_inputs=len(layer_data['weights']),
+                n_neurons=len(layer_data['weights'][0]),
+                activation_function=layer_data['activation_function']
+            )
+            layer.weights = np.array(layer_data['weights'])
+            layer.biases = np.array(layer_data['biases'])
+            self.layers.append(layer)
