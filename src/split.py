@@ -4,6 +4,7 @@ import sys
 
 def split_dataset(df: pd.DataFrame) -> tuple:
 	"""Split the dataset into training and testing sets."""
+	np.random.seed(5)
 	msk = np.random.rand(len(df)) <= 0.8
 	train = df[msk]
 	test = df[~msk]
